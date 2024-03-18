@@ -18,6 +18,7 @@ jobs:
       uses: actions/setup-node@v4.0.2
     - name: Build
       run: |
+        sudo apt-get install wasi-sdk
         npm install
         cd src/wasm
         make
@@ -28,5 +29,3 @@ jobs:
       with:
         name: artifact
         path: ./out
-
-          
