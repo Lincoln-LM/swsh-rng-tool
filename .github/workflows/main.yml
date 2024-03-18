@@ -19,6 +19,9 @@ jobs:
     - name: Build
       run: |
         npm install
+        cd src/wasm
+        make
+        cd ../../
         npm run package
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
