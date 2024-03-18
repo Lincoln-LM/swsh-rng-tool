@@ -7,7 +7,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +18,7 @@ jobs:
     - name: Build
       run: |
         wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-21/wasi-sdk_21.0_amd64.deb
-        sudo apt-get install wasi-sdk_21.0_amd64.deb
+        sudo apt-get install ./wasi-sdk_21.0_amd64.deb
         npm install
         cd src/wasm
         make
