@@ -9,7 +9,7 @@ const nextConfig = {
       },
     ];
   },
-  assetPrefix: "/static/",
+  assetPrefix: process.env.NODE_ENV === "production" ? "/static/" : "",
 };
 
 export default nextConfig;

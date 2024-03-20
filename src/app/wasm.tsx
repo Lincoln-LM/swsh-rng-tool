@@ -1,7 +1,9 @@
 import { WASI } from "@wasmer/wasi";
 import wasiBindings from "@wasmer/wasi/lib/bindings/browser";
 import { WasmFs } from "@wasmer/wasmfs";
-import { inherits } from "util";
+import { OverworldSpec, GimmickSpec } from './components/results';
+import { Settings } from "./components/settings";
+import { Filters } from "./components/filters";
 
 interface Library {
     deleteBytes(address: number): void;
@@ -9,12 +11,15 @@ interface Library {
 
     xoroshiro(rngState: number): number;
     xoroshiroUpdate(rng: number, rngState: number): number;
+
+    generateSlots(settings: number, filters: number, slotTable: number, rng: number): number;
+    generateGimmicks(settings: number, filters: number, gimmickSpec: number, rng: number): number;
 }
 
 let wasmfs: WasmFs;
 let wasi: WASI;
 let memory: WebAssembly.Memory;
-let wasm_module: WebAssembly.Module;
+let wasmModule: WebAssembly.Module;
 let instance: WebAssembly.Instance;
 let wasmExports: Library;
 
@@ -26,12 +31,12 @@ export async function loadModule() {
             fs: wasmfs.fs
         }
     });
-    wasm_module = await WebAssembly.compileStreaming(fetch(process.env.NODE_ENV == "production" ? "static/wasm/main.wasm" : '/wasm/main.wasm'));
-    const { wasi_snapshot_preview1 } = wasi.getImports(wasm_module);
+    wasmModule = await WebAssembly.compileStreaming(fetch(process.env.NODE_ENV == "production" ? "static/wasm/main.wasm" : '/wasm/main.wasm'));
+    const { wasi_snapshot_preview1 } = wasi.getImports(wasmModule);
     memory = new WebAssembly.Memory({ initial: 2 });
     wasi.setMemory(memory);
     const env = { memory };
-    instance = await WebAssembly.instantiate(wasm_module, { env, wasi_snapshot_preview1 });
+    instance = await WebAssembly.instantiate(wasmModule, { env, wasi_snapshot_preview1 });
     wasmExports = instance.exports as unknown as Library;
 }
 
@@ -67,6 +72,12 @@ export class Pointer {
         result.writeArrayBuffer(array);
         return result;
     }
+    static allocateString(string: string) {
+        return Pointer.allocateArrayBuffer(new TextEncoder().encode(string + "\0"));
+    }
+    static allocateJSON(obj: any) {
+        return Pointer.allocateString(JSON.stringify(obj));
+    }
 }
 
 export class Xoroshiro extends Pointer {
@@ -75,5 +86,24 @@ export class Xoroshiro extends Pointer {
     }
     update(rngState: BigUint64Array) {
         return wasmExports.xoroshiroUpdate(this.address, Pointer.allocateArrayBuffer(rngState.buffer).address);
+    }
+}
+
+export namespace Overworld {
+    export function generateSlots(settings: Settings, filters: Filters, slotTable: any, initialRngState: BigUint64Array): OverworldSpec[] {
+        return JSON.parse(new Pointer(wasmExports.generateSlots(
+            Pointer.allocateJSON(settings).address,
+            Pointer.allocateJSON(filters).address,
+            Pointer.allocateJSON(slotTable).address,
+            Pointer.allocateArrayBuffer(initialRngState.buffer).address
+        )).readString());
+    }
+    export function generateGimmicks(settings: Settings, filters: Filters, gimmickSpec: GimmickSpec, initialRngState: BigUint64Array): OverworldSpec[] {
+        return JSON.parse(new Pointer(wasmExports.generateGimmicks(
+            Pointer.allocateJSON(settings).address,
+            Pointer.allocateJSON(filters).address,
+            Pointer.allocateJSON(gimmickSpec).address,
+            Pointer.allocateArrayBuffer(initialRngState.buffer).address
+        )).readString());
     }
 }

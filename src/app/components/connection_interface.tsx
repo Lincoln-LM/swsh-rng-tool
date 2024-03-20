@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { API } from "../api";
 
 export function ConnectionInterface(
@@ -13,24 +13,33 @@ export function ConnectionInterface(
   }
 ) {
   const [isConnected, setIsConnected] = useState(false);
+  const isConnectedRef = useRef(isConnected);
+  isConnectedRef.current = isConnected;
   const [ipAddress, setIpAddress] = useState('');
-  const [updateInterval, setUpdateInterval] = useState(0 as NodeJS.Timeout | number);
+  const [updatePromise, setUpdatePromise] = useState(null as Promise<void> | null);
   const buttonColorClass = isConnected ? "bg-red-500 active:bg-red-600 hover:bg-red-600" : "bg-blue-500 active:bg-blue-600 hover:bg-blue-600";
   const id = useId();
   function onClick() {
     if (isConnected) {
-      clearInterval(updateInterval);
-      onDisconnect();
       setIsConnected(false);
+      updatePromise?.then(() => {
+        onDisconnect();
+        API.disconnect();
+      })
     } else {
-      API.connect(ipAddress)
-        .then((response) => {
+      setUpdatePromise(API.connect(ipAddress)
+        .then(async (response) => {
           if (response.ok) {
             setIsConnected(true);
-            onConnect().then(() => setUpdateInterval(setInterval(updateCallback, 100)));
+            isConnectedRef.current = true;
+            await onConnect();
+            while (isConnectedRef.current) {
+              await updateCallback();
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
           }
         }
-        );
+        ));
     }
   }
   return (

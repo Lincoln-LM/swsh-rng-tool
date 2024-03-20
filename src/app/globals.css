@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* TODO: actual extensive lightmode */
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 214, 219, 220;
@@ -17,6 +18,11 @@
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
+}
+
+th {
+  background: rgb(var(--background-rgb));
+  background-clip: content-box;
 }
 
 @layer utilities {
