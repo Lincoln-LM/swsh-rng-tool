@@ -71,8 +71,8 @@ export function InfoInterface(
             return (
                 <div className="flex flex-col text-lg gap-2">
                     <span>Level Range: {encounter_table.minLevel}-{encounter_table.maxLevel}</span>
-                    {encounter_table.slots.filter((slot) => slot.weight > 0).map((slot) => (
-                        <div className="flex flex-row text-lg gap-2">
+                    {encounter_table.slots.filter((slot) => slot.weight > 0).map((slot, i) => (
+                        <div className="flex flex-row text-lg gap-2" key={i}>
                             <span>{SPECIES[slot.species]}{slot.form !== 0 ? "-" + slot.form : ""}</span>
                             <span>Chance: {slot.weight}%</span>
                         </div>
