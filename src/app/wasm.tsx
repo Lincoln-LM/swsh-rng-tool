@@ -1,7 +1,7 @@
 import { WASI } from "@wasmer/wasi";
 import wasiBindings from "@wasmer/wasi/lib/bindings/browser";
 import { WasmFs } from "@wasmer/wasmfs";
-import { OverworldSpec, GimmickSpec } from './components/results';
+import { OverworldSpec, GimmickSpec, EncounterSlotTable } from './components/results';
 import { Settings } from "./components/settings";
 import { Filters } from "./components/filters";
 
@@ -90,7 +90,7 @@ export class Xoroshiro extends Pointer {
 }
 
 export namespace Overworld {
-    export function generateSlots(settings: Settings, filters: Filters, slotTable: any, initialRngState: BigUint64Array): OverworldSpec[] {
+    export function generateSlots(settings: Settings, filters: Filters, slotTable: EncounterSlotTable, initialRngState: BigUint64Array): OverworldSpec[] {
         return JSON.parse(new Pointer(wasmExports.generateSlots(
             Pointer.allocateJSON(settings).address,
             Pointer.allocateJSON(filters).address,

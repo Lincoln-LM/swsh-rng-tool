@@ -24,6 +24,7 @@ export function InfoInterface(
         spawnerCanvasRef,
         loadedSpawners,
         setSpawner,
+        updateSpawners,
         weather,
     }: {
         rngAdvance: number,
@@ -32,6 +33,7 @@ export function InfoInterface(
         spawnerCanvasRef: React.RefObject<HTMLCanvasElement>,
         loadedSpawners: Spawner[],
         setSpawner: (spawner: Spawner | null) => void,
+        updateSpawners: () => Promise<void>,
         weather: number
     }
 ) {
@@ -49,21 +51,35 @@ export function InfoInterface(
         if (loadedSpawners.length === 0) {
             return "N/A";
         }
-        // TODO: slot handling
         const spawner = loadedSpawners[selectedSpawner];
-        const gimmick = spawner.gimmickSpecs[weather];
-        return (
-            <div className="flex flex-row text-lg gap-2">
-                <span>{SPECIES[gimmick.species]}{gimmick.form !== 0 ? "-" + gimmick.form : ""}</span>
-                <span>Level {gimmick.level}</span>
-                {gimmick.shininess !== 0 ? <span>Shiny Locked</span> : null}
-                {gimmick.nature !== 25 ? <span>Nature {NATURES[gimmick.nature]}</span> : null}
-                {gimmick.gender !== 0 ? <span>Gender {GENDERS[gimmick.gender]}</span> : null}
-                {gimmick.ability !== 0 ? <span>Ability {gimmick.ability}</span> : null}
-                {gimmick.item !== 0 ? <span>Item {gimmick.item}</span> : null}
-                {gimmick.ivs[0] !== -1 ? <span>Guaranteed IVs {~gimmick.ivs[0]}</span> : null}
-            </div>
-        )
+        if (settings.encounterType === 0) {
+            const gimmick = spawner.gimmickSpecs[weather];
+            return (
+                <div className="flex flex-row text-lg gap-2">
+                    <span>{SPECIES[gimmick.species]}{gimmick.form !== 0 ? "-" + gimmick.form : ""}</span>
+                    <span>Level {gimmick.level}</span>
+                    {gimmick.shininess !== 0 ? <span>Shiny Locked</span> : null}
+                    {gimmick.nature !== 25 ? <span>Nature {NATURES[gimmick.nature]}</span> : null}
+                    {gimmick.gender !== 0 ? <span>Gender {GENDERS[gimmick.gender]}</span> : null}
+                    {gimmick.ability !== 0 ? <span>Ability {gimmick.ability}</span> : null}
+                    {gimmick.item !== 0 ? <span>Item {gimmick.item}</span> : null}
+                    {gimmick.ivs[0] !== -1 ? <span>Guaranteed IVs {~gimmick.ivs[0]}</span> : null}
+                </div>
+            )
+        } else {
+            const encounter_table = spawner.encounterSlotTables[weather];
+            return (
+                <div className="flex flex-col text-lg gap-2">
+                    <span>Level Range: {encounter_table.minLevel}-{encounter_table.maxLevel}</span>
+                    {encounter_table.slots.filter((slot) => slot.weight > 0).map((slot) => (
+                        <div className="flex flex-row text-lg gap-2">
+                            <span>{SPECIES[slot.species]}{slot.form !== 0 ? "-" + slot.form : ""}</span>
+                            <span>Chance: {slot.weight}%</span>
+                        </div>
+                    ))}
+                </div>
+            )
+        }
     }
 
     return (
@@ -75,6 +91,19 @@ export function InfoInterface(
                     <div className="p-2 font-normal flex flex-col items-center gap-2">
                         <span className="flex flex-col items-center">Advance: {rngAdvance}</span>
                         <span className="flex flex-col items-center">Weather: {WEATHERS[settings.weather]}</span>
+                        <label className="flex flex-col md:flex-row items-center gap-2">
+                            Encounter Type:
+                            <select onChange={(e) => {
+                                setSettings((settings) => {
+                                    settings.encounterType = parseInt(e.target.value);
+                                    return settings;
+                                });
+                                updateSpawners();
+                            }} className="rounded text-black w-full h-8 p-2">
+                                <option value="0">Gimmick</option>
+                                <option value="1">Symbol</option>
+                            </select>
+                        </label>
                         <label className="flex flex-col md:flex-row items-center gap-2">
                             Spawner:
                             <select onChange={(e) => {
@@ -149,6 +178,12 @@ export function InfoInterface(
                                 className="w-32 h-8 p-2 border border-gray-300 rounded text-black"
                                 value={settings.rainCalibration}
                                 onChange={(e) => setSettings({ ...settings, rainCalibration: parseInt(e.target.value) })}
+                            />
+                        </label>
+                        <label className="flex flex-col md:flex-row items-center gap-2">
+                            Do Rotation Rand:
+                            <input
+                                type="checkbox" className="w-8 h-8 p-2 border border-gray-300 rounded text-black" checked={settings.doRotationRand} onChange={(e) => setSettings({ ...settings, doRotationRand: e.target.checked })}
                             />
                         </label>
                     </div>

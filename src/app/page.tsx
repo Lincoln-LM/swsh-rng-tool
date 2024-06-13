@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState } from "react";
-import { API, Spawner } from "./api";
+import { API, Spawner, SpawnerList } from "./api";
 import { ConnectionInterface } from "./components/connection_interface";
 import { InfoInterface, Settings } from "./components/settings";
 import { FiltersInterface, Filters } from "./components/filters";
@@ -12,18 +12,14 @@ export default function Home() {
     const [rngAdvance, setRngAdvance] = useState(0);
     const [initialRngState, setInitialRngState] = useState(new BigUint64Array(2));
     const [rngPointer, setRngPointer] = useState(null as Xoroshiro | null);
-    const [loadedSpawners, setLoadedSpawners] = useState([] as Spawner[]);
+    const [fullSpawnerList, setFullSpawnerList] = useState({ gimmickSpawners: [], encountSpawners: [] } as SpawnerList);
     const [spawner, setSpawner] = useState<Spawner | null>(null);
     const rngPointerRef = useRef<Xoroshiro | null>();
     const loadedSpawnersRef = useRef<Spawner[]>();
     const spawnerRef = useRef<Spawner | null>();
     const spawnerCanvasRef = useRef<HTMLCanvasElement>(null);
     rngPointerRef.current = rngPointer;
-    loadedSpawnersRef.current = loadedSpawners;
     spawnerRef.current = spawner;
-    if (spawner == null && loadedSpawners.length > 0) {
-        setSpawner(loadedSpawners[0]);
-    }
 
     const [settings, setSettings] = useState<Settings>({
         minAdvance: 0,
@@ -36,9 +32,15 @@ export default function Home() {
         hasShinyCharm: false,
         hasMarkCharm: false,
         weather: 0,
-        encounterType: 0,
+        encounterType: 1,
     })
 
+    const loadedSpawners = settings.encounterType === 0 ? fullSpawnerList.gimmickSpawners : fullSpawnerList.encountSpawners;
+    loadedSpawnersRef.current = loadedSpawners;
+    if (spawner == null && loadedSpawners.length > 0) {
+        setSpawner(loadedSpawners[0]);
+    }
+    const updateSpawners = async () => setFullSpawnerList(await API.loadedSpawners());
     const [filters, setFilters] = useState<Filters>(
         {
             ivMin: [0, 0, 0, 0, 0, 0],
@@ -58,8 +60,22 @@ export default function Home() {
     }
     async function onConnect() {
         const rngState = await API.rngState();
-        setInitialRngState(rngState);
-        setRngPointer(new Xoroshiro(rngState));
+        if (rngPointerRef.current) {
+            const offset = rngPointerRef.current.update(rngState);
+            if (offset < 1000000) {
+                setRngAdvance((old) => old + offset);
+            }
+            else {
+                setRngAdvance(0);
+                setInitialRngState(rngState);
+                setRngPointer(new Xoroshiro(rngState));
+            }
+        }
+        else {
+            setRngAdvance(0);
+            setInitialRngState(rngState);
+            setRngPointer(new Xoroshiro(rngState));
+        }
         const tidsid = await API.tidsid();
         const charms = await API.charms();
         setSettings((settings) => {
@@ -70,7 +86,7 @@ export default function Home() {
                 hasShinyCharm: charms.hasShinyCharm
             };
         })
-        setLoadedSpawners(await API.loadedSpawners());
+        await updateSpawners();
     }
     async function onDisconnect() {
 
@@ -89,7 +105,6 @@ export default function Home() {
             const ctx = spawnerCanvasRef.current.getContext("2d");
             if (ctx) {
                 const playerPosition = await API.playerPosition();
-                console.log(playerPosition.yaw);
                 const center = { x: spawnerCanvasRef.current.width / 2, y: spawnerCanvasRef.current.height / 2 };
                 const scale = spawnerCanvasRef.current.width / 15000;
                 ctx.clearRect(0, 0, spawnerCanvasRef.current.width, spawnerCanvasRef.current.height);
@@ -140,9 +155,9 @@ export default function Home() {
     return (
         <main className="w-full h-screen flex flex-col gap-4 p-4">
             <ConnectionInterface onConnect={onConnect} updateCallback={updateCallback} onDisconnect={onDisconnect} />
-            <InfoInterface weather={settings.weather} setSpawner={setSpawner} loadedSpawners={loadedSpawners} spawnerCanvasRef={spawnerCanvasRef} rngAdvance={rngAdvance} settings={settings} setSettings={setSettings} />
+            <InfoInterface weather={settings.weather} setSpawner={setSpawner} updateSpawners={updateSpawners} loadedSpawners={loadedSpawners} spawnerCanvasRef={spawnerCanvasRef} rngAdvance={rngAdvance} settings={settings} setSettings={setSettings} />
             <FiltersInterface filters={filters} setFilters={setFilters} />
-            <ResultsInterface gimmickSpec={spawner?.gimmickSpecs[settings.weather]} initialRngState={initialRngState} filters={filters} settings={settings} />
+            <ResultsInterface gimmickSpec={spawner?.gimmickSpecs[settings.weather]} encounterTable={spawner?.encounterSlotTables[settings.weather]} initialRngState={initialRngState} filters={filters} settings={settings} />
         </main>
     );
 }

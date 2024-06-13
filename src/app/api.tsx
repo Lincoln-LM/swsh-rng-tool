@@ -1,4 +1,4 @@
-import { GimmickSpec } from "./components/results";
+import { GimmickSpec, EncounterSlotTable } from "./components/results";
 
 // TODO: move this
 export interface Spawner {
@@ -6,9 +6,12 @@ export interface Spawner {
     spawnRadius: number,
     despawnRadius: number,
     gimmickSpecs: GimmickSpec[],
-    encounterSlotTables: any[],
+    encounterSlotTables: EncounterSlotTable[],
 }
-
+export interface SpawnerList {
+    gimmickSpawners: Spawner[],
+    encountSpawners: Spawner[],
+}
 export namespace API {
     export async function connect(ip: string) {
         return await fetch("/api/connect", {
@@ -45,7 +48,7 @@ export namespace API {
     }
 
     export async function loadedSpawners() {
-        return (await (await fetch("/api/loaded-spawners")).json()) as Spawner[];
+        return (await (await fetch("/api/loaded-spawners")).json()) as SpawnerList;
     }
     export async function playerPosition(): Promise<{
         x: number,

@@ -15,6 +15,16 @@ export interface GimmickSpec {
     item: number,
     ivs: number[],
 }
+export interface EncounterSlot {
+    species: number,
+    form: number,
+    weight: number,
+}
+export interface EncounterSlotTable {
+    minLevel: number,
+    maxLevel: number,
+    slots: EncounterSlot[];
+}
 export interface OverworldSpec {
     species: number,
     form: number,
@@ -49,28 +59,30 @@ export function ResultsInterface(
         settings,
         filters,
         gimmickSpec,
+        encounterTable,
     }: {
         initialRngState: BigUint64Array,
         settings: Settings
         filters: Filters
         gimmickSpec: GimmickSpec | undefined
+        encounterTable: EncounterSlotTable | undefined
     }) {
-    // TODO: pass from page
-    const isGimmick = true;
+    const isGimmick = settings.encounterType == 0;
     const [currentResults, setCurrentResults] = useState<JSX.Element[]>([]);
     const id = useId();
     const tableRef = useRef<HTMLTableElement | null>(null);
     function generate() {
-        if (tableRef.current && gimmickSpec) {
+        if (tableRef.current && (gimmickSpec || encounterTable)) {
             const results = [];
-            console.log(filters);
-            const rawResults = Overworld.generateGimmicks(
+            if ((isGimmick && !gimmickSpec) || (!isGimmick && !encounterTable)) {
+                return;
+            }
+            const rawResults = isGimmick ? Overworld.generateGimmicks(
                 settings,
                 filters,
-                gimmickSpec,
+                gimmickSpec as GimmickSpec,
                 initialRngState
-            );
-            console.log(rawResults);
+            ) : Overworld.generateSlots(settings, filters, encounterTable as EncounterSlotTable, initialRngState);
             for (const result of rawResults) {
                 results.push(
                     <tr>

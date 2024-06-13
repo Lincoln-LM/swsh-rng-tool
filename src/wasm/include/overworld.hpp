@@ -298,8 +298,10 @@ void handleLeadAbility(Xoroshiro &rng) {
 }
 
 void generateBasicSpec(const Settings &settings, const EncounterSlot &slot, u8 maxLevel, u8 minLevel, OverworldSpec &spec, Xoroshiro &rng) {
+    spec.species = slot.species;
+    spec.form = slot.form;
     // special handling for minior forms would happen here
-    spec.level = rng.randMax(maxLevel - minLevel + 1);
+    spec.level = minLevel + rng.randMax(maxLevel - minLevel + 1);
     // pressure forcing max level would happen here
     // level cap shiny lock applied here
     // this is always overwritten for encounter types that use generateMainSpec (Symbol/Hidden/Fishing)
@@ -335,7 +337,8 @@ void generateFixed(const Settings &settings, OverworldSpec &spec) {
             spec.ivs[i] = rng.randMax<32>();
         }
     }
-    auto scale = rng.randMax<0x81>() + rng.randMax<0x80>();
+    auto scale = rng.randMax<0x81>();
+    scale += rng.randMax<0x80>();
     spec.scale = scale == 0 ? 1 : scale == 255 ? 2 : 0;
     // weight = rng.randMax<0x81>() + rng.randMax<0x80>();
 }
@@ -475,7 +478,7 @@ void preGenerationAdvances(const Settings &settings, Xoroshiro &rng) {
     for (int i = 0; i < settings.rainCalibration; i++) {
         rng.randMax<20000>();
     }
-    if (settings.encounterType == EncounterType::Fishing) {
+    if (settings.encounterType != EncounterType::Fishing && settings.encounterType != EncounterType::Gimmick) {
         rng.next();
     }
 }

@@ -5,6 +5,7 @@ from math import atan2
 from struct import iter_unpack, unpack
 from flask import Flask, send_file, request
 from nxsocket import NXSocket
+from game_enums import FieldObjectVTable
 
 socket = NXSocket()
 app = Flask(__name__)
@@ -78,33 +79,64 @@ def get_current_weather():
     # convert GetCurrentWeather weather enum to encounter archive order
     return str([0, 1, 2, 3, 5, 6, 4, 7, 8][weather])
 
-
-@app.route("/api/loaded-spawners")
-def get_loaded_spawners():
-    """Read loaded spawners"""
-    main_base = (
-        unpack("<Q", socket.read_pointer((0x2955208, 0xB0, 0, 0), 8))[0] - 0x255D470
-    )
-    field_objects_start, field_objects_end = unpack(
-        "<QQ", socket.read_pointer((0x2955208, 0xB0), 16)
-    )
-    field_objects_size = field_objects_end - field_objects_start
-    app.logger.info("%d %d", field_objects_start, field_objects_end)
-    field_objects_pointers = unpack(
-        "<" + ("Q" * (field_objects_size >> 3)),
-        socket.read_pointer((0x2955208, 0xB0, 0), field_objects_size),
-    )
-    field_objects_vtables = unpack(
-        "<" + ("Q" * (field_objects_size >> 3)),
+def fetch_encount_spawners_meta(encount_spawners: tuple[int]):
+    """Read EncountSpawner list metadata"""
+    if len(encount_spawners) == 0:
+        return []
+    position_data = iter_unpack(
+        "<fff",
         socket.read_absolute_multi(
-            ((address, 8) for address in field_objects_pointers)
+            ((spawner + 0xB0, 12) for spawner in encount_spawners)
         ),
     )
-    gimmick_spawners = tuple(
-        address
-        for address, abs_vtable in zip(field_objects_pointers, field_objects_vtables)
-        if abs_vtable - main_base == 0x255A750
+    spawn_radius_data = iter_unpack(
+        "<f",
+        socket.read_absolute_multi(
+            ((spawner + 0x3A0 + 0x20 + 0x4, 4) for spawner in encount_spawners)
+        ),
     )
+    despawn_radius_data = iter_unpack(
+        "<f",
+        socket.read_absolute_multi(
+            ((spawner + 0x3A0 + 0x20 + 0x20 + 0x4, 4) for spawner in encount_spawners)
+        ),
+    )
+    encounter_slot_table_data = iter_unpack(
+        "<bbhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+        socket.read_absolute_multi(
+            ((spawner + 0x450 + 0x10, 0x22e) for spawner in encount_spawners)
+        ),
+    )
+    return [
+        {
+            "position": list(position),
+            "spawnRadius": next(spawn_radius_data)[0],
+            "despawnRadius": next(despawn_radius_data)[0],
+            "gimmickSpecs": [],
+            "encounterSlotTables": [
+                {
+                    "minLevel": min_level,
+                    "maxLevel": max_level,
+                    "slots": [
+                        {
+                            "weight": table[slot * 3 + 0],
+                            "species": table[slot * 3 + 1],
+                            "form": table[slot * 3 + 2],
+                        } for slot in range(10)
+                    ]
+                }
+                for (
+                    min_level,
+                    max_level,
+                    *table
+                ) in (next(encounter_slot_table_data) for _ in range(9))
+            ],
+        }
+        for position in position_data
+    ]
+
+def fetch_gimmick_spawners_meta(gimmick_spawners: tuple[int]):
+    """Read GimmickSpawner list metadata"""
     if len(gimmick_spawners) == 0:
         return []
     position_data = iter_unpack(
@@ -169,6 +201,42 @@ def get_loaded_spawners():
         }
         for position in position_data
     ]
+
+@app.route("/api/loaded-spawners")
+def get_loaded_spawners():
+    """Read loaded spawners"""
+    main_base = (
+        unpack("<Q", socket.read_pointer((0x2955208, 0xB0, 0, 0), 8))[0] - 0x255D470
+    )
+    field_objects_start, field_objects_end = unpack(
+        "<QQ", socket.read_pointer((0x2955208, 0xB0), 16)
+    )
+    field_objects_size = field_objects_end - field_objects_start
+    app.logger.info("%d %d", field_objects_start, field_objects_end)
+    field_objects_pointers = unpack(
+        "<" + ("Q" * (field_objects_size >> 3)),
+        socket.read_pointer((0x2955208, 0xB0, 0), field_objects_size),
+    )
+    field_objects_vtables = unpack(
+        "<" + ("Q" * (field_objects_size >> 3)),
+        socket.read_absolute_multi(
+            ((address, 8) for address in field_objects_pointers)
+        ),
+    )
+    gimmick_spawners = tuple(
+        address
+        for address, abs_vtable in zip(field_objects_pointers, field_objects_vtables)
+        if abs_vtable - main_base == FieldObjectVTable.GIMMICK_SPAWNER
+    )
+    encount_spawners = tuple(
+        address
+        for address, abs_vtable in zip(field_objects_pointers, field_objects_vtables)
+        if abs_vtable - main_base == FieldObjectVTable.ENCOUNT_SPAWNER
+    )
+    return {
+        "gimmickSpawners": fetch_gimmick_spawners_meta(gimmick_spawners),
+        "encountSpawners": fetch_encount_spawners_meta(encount_spawners),
+    }
 
 
 @app.route("/api/player-position")
