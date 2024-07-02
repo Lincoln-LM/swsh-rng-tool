@@ -42,6 +42,12 @@ class NXSocket:
             data += self.socket.recv(1024)
         return bytearray.fromhex(data[0:-1].decode("utf-8"))
 
+    def get_main_base(self) -> int:
+        """Get base address for the "main" code module"""
+        with self.lock:
+            self._send("getMainNsoBase")
+            return int.from_bytes(self._recv(), "big")
+
     def read_heap(self, address: int, size: int) -> bytearray:
         """Read data offset from heap"""
         with self.lock:

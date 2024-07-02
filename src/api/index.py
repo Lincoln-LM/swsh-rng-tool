@@ -205,9 +205,7 @@ def fetch_gimmick_spawners_meta(gimmick_spawners: tuple[int]):
 @app.route("/api/loaded-spawners")
 def get_loaded_spawners():
     """Read loaded spawners"""
-    main_base = (
-        unpack("<Q", socket.read_pointer((0x2955208, 0xB0, 0, 0), 8))[0] - 0x255D470
-    )
+    main_base = socket.get_main_base()
     field_objects_start, field_objects_end = unpack(
         "<QQ", socket.read_pointer((0x2955208, 0xB0), 16)
     )
