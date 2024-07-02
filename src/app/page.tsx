@@ -32,7 +32,7 @@ export default function Home() {
         hasShinyCharm: false,
         hasMarkCharm: false,
         weather: 0,
-        encounterType: 1,
+        encounterType: 0,
     })
 
     const loadedSpawners = settings.encounterType === 0 ? fullSpawnerList.gimmickSpawners : fullSpawnerList.encountSpawners;
