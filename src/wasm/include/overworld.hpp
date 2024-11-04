@@ -85,7 +85,6 @@ typedef struct Settings {
     u32 npcCount;
     u32 flyCalibration;
     u32 rainCalibration;
-    bool doRotationRand;
     u32 tidsid;
     bool hasShinyCharm;
     bool hasMarkCharm;
@@ -99,7 +98,6 @@ typedef struct Settings {
         npcCount = j["npcCount"];
         flyCalibration = j["flyCalibration"];
         rainCalibration = j["rainCalibration"];
-        doRotationRand = j["doRotationRand"];
         tidsid = j["tidsid"];
         hasShinyCharm = j["hasShinyCharm"];
         hasMarkCharm = j["hasMarkCharm"];
@@ -470,15 +468,15 @@ void preGenerationAdvances(const Settings &settings, Xoroshiro &rng) {
         }
     }
     for (int i = 0; i < settings.npcCount; i++) {
-        rng.randMax<90>();
-    }
-    if (settings.doRotationRand) {
-        rng.randMax<360>();
+        rng.randMax<91>();
     }
     for (int i = 0; i < settings.rainCalibration; i++) {
-        rng.randMax<20000>();
+        rng.randMax<20001>();
     }
-    if (settings.encounterType != EncounterType::Fishing && settings.encounterType != EncounterType::Gimmick) {
+    if (settings.encounterType == EncounterType::Symbol) {
+        // decide spawn position
+        // note: hidden encounters do this after the main spec
+        rng.randMax<361>();
         rng.next();
     }
 }

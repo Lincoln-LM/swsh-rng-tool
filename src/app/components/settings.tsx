@@ -8,7 +8,6 @@ export interface Settings {
     npcCount: number,
     flyCalibration: number,
     rainCalibration: number,
-    doRotationRand: boolean,
     tidsid: number,
     hasShinyCharm: boolean,
     hasMarkCharm: boolean,
@@ -178,12 +177,6 @@ export function InfoInterface(
                                 className="w-32 h-8 p-2 border border-gray-300 rounded text-black"
                                 value={settings.rainCalibration}
                                 onChange={(e) => setSettings({ ...settings, rainCalibration: parseInt(e.target.value) })}
-                            />
-                        </label>
-                        <label className="flex flex-col md:flex-row items-center gap-2">
-                            Do Rotation Rand:
-                            <input
-                                type="checkbox" className="w-8 h-8 p-2 border border-gray-300 rounded text-black" checked={settings.doRotationRand} onChange={(e) => setSettings({ ...settings, doRotationRand: e.target.checked })}
                             />
                         </label>
                     </div>

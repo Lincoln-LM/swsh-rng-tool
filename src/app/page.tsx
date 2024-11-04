@@ -27,7 +27,6 @@ export default function Home() {
         npcCount: 0,
         flyCalibration: 0,
         rainCalibration: 0,
-        doRotationRand: false,
         tidsid: 0,
         hasShinyCharm: false,
         hasMarkCharm: false,
