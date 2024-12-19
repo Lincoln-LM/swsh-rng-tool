@@ -78,6 +78,12 @@ typedef struct Xoroshiro
             return result;
         }
     }
+    float randFloat() {
+        return (float)(next()) * 0x1p-64f;
+    }
+    float randFloat(float maximum) {
+        return (float)(next()) * 0x1p-64f * maximum + 0.0f;
+    }
     void advance(const u32 advances) {
         for (u32 i = 0; i < advances; i++) {
             next();

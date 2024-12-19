@@ -3,6 +3,7 @@ import { GimmickSpec, EncounterSlotTable } from "./components/results";
 // TODO: move this
 export interface Spawner {
     position: number[],
+    createRadius: number,
     spawnRadius: number,
     despawnRadius: number,
     gimmickSpecs: GimmickSpec[],

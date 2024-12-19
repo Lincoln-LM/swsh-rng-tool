@@ -12,7 +12,7 @@ interface Library {
     xoroshiro(rngState: number): number;
     xoroshiroUpdate(rng: number, rngState: number): number;
 
-    generateSlots(settings: number, filters: number, slotTable: number, rng: number): number;
+    generateSlots(settings: number, filters: number, slotTable: number, spawnRadius: number, rng: number): number;
     generateGimmicks(settings: number, filters: number, gimmickSpec: number, rng: number): number;
 }
 
@@ -90,11 +90,12 @@ export class Xoroshiro extends Pointer {
 }
 
 export namespace Overworld {
-    export function generateSlots(settings: Settings, filters: Filters, slotTable: EncounterSlotTable, initialRngState: BigUint64Array): OverworldSpec[] {
+    export function generateSlots(settings: Settings, filters: Filters, slotTable: EncounterSlotTable, spawnRadius: number, initialRngState: BigUint64Array): OverworldSpec[] {
         return JSON.parse(new Pointer(wasmExports.generateSlots(
             Pointer.allocateJSON(settings).address,
             Pointer.allocateJSON(filters).address,
             Pointer.allocateJSON(slotTable).address,
+            spawnRadius,
             Pointer.allocateArrayBuffer(initialRngState.buffer).address
         )).readString());
     }

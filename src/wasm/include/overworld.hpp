@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "util.hpp"
 #include "types.h"
 #include "xoroshiro.hpp"
@@ -85,6 +86,7 @@ typedef struct Settings {
     u32 npcCount;
     u32 flyCalibration;
     u32 rainCalibration;
+    u32 maximumDistance;
     u32 tidsid;
     bool hasShinyCharm;
     bool hasMarkCharm;
@@ -98,6 +100,7 @@ typedef struct Settings {
         npcCount = j["npcCount"];
         flyCalibration = j["flyCalibration"];
         rainCalibration = j["rainCalibration"];
+        maximumDistance = j["maximumDistance"];
         tidsid = j["tidsid"];
         hasShinyCharm = j["hasShinyCharm"];
         hasMarkCharm = j["hasMarkCharm"];
@@ -124,6 +127,9 @@ typedef struct OverworldSpec {
     u32 ec = -1;
     u8 scale = -1;
 
+    float rotation = 0.0;
+    float distance = 0.0;
+
     u8 slot = 10;
     u32 advance = -1;
 
@@ -147,6 +153,9 @@ typedef struct OverworldSpec {
         j["pid"] = pid;
         j["ec"] = ec;
         j["scale"] = scale;
+
+        j["rotation"] = rotation;
+        j["distance"] = distance;
 
         j["slot"] = slot;
         j["advance"] = advance;
@@ -406,9 +415,7 @@ s8 generateRegularSlot(const EncounterSlotTable &slotTable, Xoroshiro &rng) {
     return -1;
 }
 
-OverworldSpec generateSlotEncount(const Settings &settings, const EncounterSlotTable &slotTable, Xoroshiro &rng) {
-    OverworldSpec spec;
-    handleLeadAbility(rng);
+void generateFullSpec(const Settings &settings, const EncounterSlotTable &slotTable, Xoroshiro &rng, OverworldSpec &spec) {
     s8 slot = -1;
     // TODO: does fishing use this
     if (settings.encounterType == EncounterType::Symbol /*|| settings.encounterType == EncounterType::Fishing*/) {
@@ -426,6 +433,52 @@ OverworldSpec generateSlotEncount(const Settings &settings, const EncounterSlotT
     // berry tree (kinomi) encounters do not call generateMainSpec
     generateMainSpec(settings, spec, rng);
     // level forced to 60 here (WK_SCENE_MAIN_MASTER)
+}
+
+std::optional<OverworldSpec> generateSlotEncount(const Settings &settings, const EncounterSlotTable &slotTable, const float spawnRadius, Xoroshiro &rng) {
+    OverworldSpec spec;
+    if (settings.encounterType == EncounterType::Symbol) {
+        // placement happens before generation for symbols
+        // rejects with similar conditions to hiddens but is unimplemented
+        spec.rotation = rng.randMax<361>();
+        spec.distance = rng.randFloat(spawnRadius);
+    }
+    handleLeadAbility(rng);
+    if (settings.encounterType == EncounterType::Hidden) {
+        // TODO: specify encounter rate
+        // an encounter check like this happens on every step with increasing probability of success
+        // for simplicity's sake: only return results that succeed on the first step
+        if (rng.randMax<100>() >= 22) {
+            return std::nullopt;
+        }
+    }
+    generateFullSpec(settings, slotTable, rng, spec);
+    if (settings.encounterType == EncounterType::Hidden) {
+        bool placed = false;
+        for (u8 i = 0; i < 10 && !placed; i++) {
+            spec.rotation = rng.randMax<361>();
+            spec.distance = rng.randFloat(spawnRadius);
+            // the most bare-bones placement rejection
+            // assumes sufficient distance from player/items and that it is within a grass patch
+            placed = spec.distance < spawnRadius - 40.0f;
+        }
+        if (!placed) {
+            return std::nullopt;
+        }
+        // TODO: should this be a filter instead
+        // specifying an adequate maximum distance from the spawner is a simple (though very limiting)
+        // way to avoid running into the unimplemented rejection conditions
+        if (spec.distance > settings.maximumDistance) {
+            return std::nullopt;
+        }
+        // traditional rotation
+        rng.randMax<361>();
+        // a few ticks pass potentially letting noise advance the rng
+        // lua rolls a 30% chance to not spawn
+        if (rng.randMax<100>() < 30) {
+            return std::nullopt;
+        }
+    }
     return spec;
 }
 
@@ -458,10 +511,11 @@ OverworldSpec generateGimmickEncount(const Settings &settings, const GimmickSpec
     return spec;
 }
 
-void preGenerationAdvances(const Settings &settings, Xoroshiro &rng) {
+bool preGenerationAdvances(const Settings &settings, Xoroshiro &rng) {
     if (settings.flyCalibration != 0) {
+        // TODO: properly handle map memories
         if (rng.randMax<100>() < 5) {
-            // TODO: properly handle memories or just discard this result
+            return false;
         }
         for (int i = 0; i < settings.flyCalibration; i++) {
             rng.randMax<100>();
@@ -473,12 +527,8 @@ void preGenerationAdvances(const Settings &settings, Xoroshiro &rng) {
     for (int i = 0; i < settings.rainCalibration; i++) {
         rng.randMax<20001>();
     }
-    if (settings.encounterType == EncounterType::Symbol) {
-        // decide spawn position
-        // note: hidden encounters do this after the main spec
-        rng.randMax<361>();
-        rng.next();
-    }
+
+    return true;
 }
 
 // TODO: DRY?
@@ -489,28 +539,33 @@ std::vector<OverworldSpec> generateGimmickResults(const Settings &settings, cons
     rng.advance(settings.minAdvance);
     for (int i = 0; i < settings.totalAdvances; i++) {
         Xoroshiro go(rng.state[0], rng.state[1]);
-        preGenerationAdvances(settings, go);
-        auto result = generateGimmickEncount(settings, gimmickSpec, go);
-        result.advance = settings.minAdvance + i;
-        if (filters.isValid(result)) {
-            results.push_back(result);
+        if (preGenerationAdvances(settings, go)) {
+            auto result = generateGimmickEncount(settings, gimmickSpec, go);
+            result.advance = settings.minAdvance + i;
+            if (filters.isValid(result)) {
+                results.push_back(result);
+            }
         }
         rng.next();
     }
     return results;
 }
 
-std::vector<OverworldSpec> generateSlotResults(const Settings &settings, const Filters &filters, const EncounterSlotTable &slotTable, const Xoroshiro &mainRng) {
+std::vector<OverworldSpec> generateSlotResults(const Settings &settings, const Filters &filters, const EncounterSlotTable &slotTable, const float spawnRadius, const Xoroshiro &mainRng) {
     Xoroshiro rng(mainRng.state[0], mainRng.state[1]);
     std::vector<OverworldSpec> results;
     rng.advance(settings.minAdvance);
     for (int i = 0; i < settings.totalAdvances; i++) {
         Xoroshiro go(rng.state[0], rng.state[1]);
-        preGenerationAdvances(settings, go);
-        auto result = generateSlotEncount(settings, slotTable, go);
-        result.advance = settings.minAdvance + i;
-        if (filters.isValid(result)) {
-            results.push_back(result);
+        if (preGenerationAdvances(settings, go)) {
+            auto result = generateSlotEncount(settings, slotTable, spawnRadius, go);
+            if (result) {
+                auto encount = *result;
+                encount.advance = settings.minAdvance + i;
+                if (filters.isValid(encount)) {
+                    results.push_back(encount);
+                }
+            }
         }
         rng.next();
     }
@@ -525,12 +580,12 @@ char* serializeOverworldSpecs(const std::vector<OverworldSpec> &specs) {
     return allocateStr(j.dump().c_str());
 }
 
-export char* generateSlots(const char* js_settings, const char* js_filters, const char* js_slotTable, const u64* initialRngState) {
+export char* generateSlots(const char* js_settings, const char* js_filters, const char* js_slotTable, const float spawnRadius, const u64* initialRngState) {
     Settings settings(js_settings);
     Filters filters(js_filters);
     EncounterSlotTable slotTable(js_slotTable);
     Xoroshiro rng(initialRngState[0], initialRngState[1]);
-    std::vector<OverworldSpec> results = generateSlotResults(settings, filters, slotTable, rng);
+    std::vector<OverworldSpec> results = generateSlotResults(settings, filters, slotTable, spawnRadius, rng);
     return serializeOverworldSpecs(results);
 }
 

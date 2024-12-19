@@ -8,6 +8,7 @@ export interface Settings {
     npcCount: number,
     flyCalibration: number,
     rainCalibration: number,
+    maximumDistance: number,
     tidsid: number,
     hasShinyCharm: boolean,
     hasMarkCharm: boolean,
@@ -69,6 +70,9 @@ export function InfoInterface(
             const encounter_table = spawner.encounterSlotTables[weather];
             return (
                 <div className="flex flex-col text-lg gap-2">
+                    <span>Create Radius: {spawner.createRadius}</span>
+                    <span>Spawn Radius: {spawner.spawnRadius}</span>
+                    <span>Despawn Radius: {spawner.despawnRadius}</span>
                     <span>Level Range: {encounter_table.minLevel}-{encounter_table.maxLevel}</span>
                     {encounter_table.slots.filter((slot) => slot.weight > 0).map((slot, i) => (
                         <div className="flex flex-row text-lg gap-2" key={i}>
@@ -101,6 +105,7 @@ export function InfoInterface(
                             }} className="rounded text-black w-full h-8 p-2">
                                 <option value="0">Gimmick</option>
                                 <option value="1">Symbol</option>
+                                <option value="2">Hidden</option>
                             </select>
                         </label>
                         <label className="flex flex-col md:flex-row items-center gap-2">
@@ -177,6 +182,16 @@ export function InfoInterface(
                                 className="w-32 h-8 p-2 border border-gray-300 rounded text-black"
                                 value={settings.rainCalibration}
                                 onChange={(e) => setSettings({ ...settings, rainCalibration: parseInt(e.target.value) })}
+                            />
+                        </label>
+                        <label className="flex flex-col md:flex-row items-center gap-2">
+                            Maximum Distance:
+                            <input
+                                type="number"
+                                min={0}
+                                className="w-32 h-8 p-2 border border-gray-300 rounded text-black"
+                                value={settings.maximumDistance}
+                                onChange={(e) => setSettings({ ...settings, maximumDistance: parseFloat(e.target.value) })}
                             />
                         </label>
                     </div>

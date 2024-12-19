@@ -27,6 +27,7 @@ export default function Home() {
         npcCount: 0,
         flyCalibration: 0,
         rainCalibration: 0,
+        maximumDistance: 0,
         tidsid: 0,
         hasShinyCharm: false,
         hasMarkCharm: false,
@@ -105,7 +106,7 @@ export default function Home() {
             if (ctx) {
                 const playerPosition = await API.playerPosition();
                 const center = { x: spawnerCanvasRef.current.width / 2, y: spawnerCanvasRef.current.height / 2 };
-                const scale = spawnerCanvasRef.current.width / 15000;
+                const scale = spawnerCanvasRef.current.width / 1500;
                 ctx.clearRect(0, 0, spawnerCanvasRef.current.width, spawnerCanvasRef.current.height);
                 ctx.strokeStyle = "#FFFFFF";
                 ctx.beginPath();
@@ -143,6 +144,11 @@ export default function Home() {
                     ctx.closePath();
                     ctx.strokeStyle = isSelected ? "#80FF80" : "#80FF8020"
                     ctx.beginPath();
+                    ctx.arc(relativePosition.x, relativePosition.y, spawner.createRadius * scale, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.closePath();
+                    ctx.strokeStyle = isSelected ? "#8080FF" : "#8080FF20"
+                    ctx.beginPath();
                     ctx.arc(relativePosition.x, relativePosition.y, spawner.spawnRadius * scale, 0, 2 * Math.PI);
                     ctx.stroke();
                     ctx.closePath();
@@ -156,7 +162,7 @@ export default function Home() {
             <ConnectionInterface onConnect={onConnect} updateCallback={updateCallback} onDisconnect={onDisconnect} />
             <InfoInterface weather={settings.weather} setSpawner={setSpawner} updateSpawners={updateSpawners} loadedSpawners={loadedSpawners} spawnerCanvasRef={spawnerCanvasRef} rngAdvance={rngAdvance} settings={settings} setSettings={setSettings} />
             <FiltersInterface filters={filters} setFilters={setFilters} />
-            <ResultsInterface gimmickSpec={spawner?.gimmickSpecs[settings.weather]} encounterTable={spawner?.encounterSlotTables[settings.weather]} initialRngState={initialRngState} filters={filters} settings={settings} />
+            <ResultsInterface gimmickSpec={spawner?.gimmickSpecs[settings.weather]} spawnRadius={spawner?.spawnRadius} encounterTable={spawner?.encounterSlotTables[settings.weather]} initialRngState={initialRngState} filters={filters} settings={settings} />
         </main>
     );
 }

@@ -60,12 +60,14 @@ export function ResultsInterface(
         filters,
         gimmickSpec,
         encounterTable,
+        spawnRadius,
     }: {
         initialRngState: BigUint64Array,
         settings: Settings
         filters: Filters
         gimmickSpec: GimmickSpec | undefined
         encounterTable: EncounterSlotTable | undefined
+        spawnRadius: number | undefined
     }) {
     const isGimmick = settings.encounterType == 0;
     const [currentResults, setCurrentResults] = useState<JSX.Element[]>([]);
@@ -74,7 +76,8 @@ export function ResultsInterface(
     function generate() {
         if (tableRef.current && (gimmickSpec || encounterTable)) {
             const results = [];
-            if ((isGimmick && !gimmickSpec) || (!isGimmick && !encounterTable)) {
+            // TODO: hidden encounter tables
+            if ((isGimmick && !gimmickSpec) || (!isGimmick && (!encounterTable || !spawnRadius))) {
                 return;
             }
             const rawResults = isGimmick ? Overworld.generateGimmicks(
@@ -82,7 +85,7 @@ export function ResultsInterface(
                 filters,
                 gimmickSpec as GimmickSpec,
                 initialRngState
-            ) : Overworld.generateSlots(settings, filters, encounterTable as EncounterSlotTable, initialRngState);
+            ) : Overworld.generateSlots(settings, filters, encounterTable as EncounterSlotTable, spawnRadius, initialRngState);
             for (const result of rawResults) {
                 results.push(
                     <tr>

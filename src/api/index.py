@@ -89,7 +89,7 @@ def fetch_encount_spawners_meta(encount_spawners: tuple[int]):
             ((spawner + 0xB0, 12) for spawner in encount_spawners)
         ),
     )
-    spawn_radius_data = iter_unpack(
+    create_radius_data = iter_unpack(
         "<f",
         socket.read_absolute_multi(
             ((spawner + 0x3A0 + 0x20 + 0x4, 4) for spawner in encount_spawners)
@@ -101,6 +101,12 @@ def fetch_encount_spawners_meta(encount_spawners: tuple[int]):
             ((spawner + 0x3A0 + 0x20 + 0x20 + 0x4, 4) for spawner in encount_spawners)
         ),
     )
+    spawn_radius_data = iter_unpack(
+        "<f",
+        socket.read_absolute_multi(
+            ((spawner + 0x3A0 + 0x20 + 0x20*3 + 0x4, 4) for spawner in encount_spawners)
+        ),
+    )
     encounter_slot_table_data = iter_unpack(
         "<bbhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
         socket.read_absolute_multi(
@@ -110,6 +116,7 @@ def fetch_encount_spawners_meta(encount_spawners: tuple[int]):
     return [
         {
             "position": list(position),
+            "createRadius": next(create_radius_data)[0],
             "spawnRadius": next(spawn_radius_data)[0],
             "despawnRadius": next(despawn_radius_data)[0],
             "gimmickSpecs": [],
@@ -145,7 +152,7 @@ def fetch_gimmick_spawners_meta(gimmick_spawners: tuple[int]):
             ((spawner + 0xB0, 12) for spawner in gimmick_spawners)
         ),
     )
-    spawn_radius_data = iter_unpack(
+    create_radius_data = iter_unpack(
         "<f",
         socket.read_absolute_multi(
             ((spawner + 0xB90 + 0x20 + 0x4, 4) for spawner in gimmick_spawners)
@@ -157,6 +164,12 @@ def fetch_gimmick_spawners_meta(gimmick_spawners: tuple[int]):
             ((spawner + 0xB90 + 0x20 + 0x20 + 0x4, 4) for spawner in gimmick_spawners)
         ),
     )
+    spawn_radius_data = iter_unpack(
+        "<f",
+        socket.read_absolute_multi(
+            ((spawner + 0xB90 + 0x20 + 0x20*3 + 0x4, 4) for spawner in gimmick_spawners)
+        ),
+    )
     gimmick_spec_data = iter_unpack(
         "<xxxxxxxxihxxxxxxbxxxiiiihxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbbbbbbxxxxxxxxxxx",
         socket.read_absolute_multi(
@@ -166,6 +179,7 @@ def fetch_gimmick_spawners_meta(gimmick_spawners: tuple[int]):
     return [
         {
             "position": list(position),
+            "createRadius": next(create_radius_data)[0],
             "spawnRadius": next(spawn_radius_data)[0],
             "despawnRadius": next(despawn_radius_data)[0],
             "gimmickSpecs": [
