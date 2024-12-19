@@ -85,7 +85,7 @@ export function ResultsInterface(
                 filters,
                 gimmickSpec as GimmickSpec,
                 initialRngState
-            ) : Overworld.generateSlots(settings, filters, encounterTable as EncounterSlotTable, spawnRadius, initialRngState);
+            ) : Overworld.generateSlots(settings, filters, encounterTable as EncounterSlotTable, spawnRadius as number, initialRngState);
             for (const result of rawResults) {
                 results.push(
                     <tr>
